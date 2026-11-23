@@ -1,0 +1,18 @@
+{
+  "id": "camt-twist-parser",
+  "name": "CAMT and TWIST Parser",
+  "summary": "Turn camt.086 and TWIST bank fee statements into clean CSV or JSON, in the browser or from the command line.",
+  "status": "available",
+  "version": "0.1.0",
+  "tags": [
+    "camt.086",
+    "TWIST",
+    "bank fees",
+    "CSV",
+    "JSON"
+  ],
+  "web": "web",
+  "screenshot": "docs/screenshots/table.png",
+  "cli": "camt-twist-parser",
+  "docs": "README.md"
+}

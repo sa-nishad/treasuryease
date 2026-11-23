@@ -1,0 +1,93 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Document xmlns="urn:iso:std:iso:20022:tech:xsd:camt.086.001.01">
+  <BkSvcsBllgStmt>
+    <RptHdr><RptId>000000000001</RptId></RptHdr>
+    <BllgStmtGrp>
+      <GrpId>Group 1 of 1</GrpId>
+      <Sndr><Nm>Example Bank plc</Nm><LglNm>Example Bank plc</LglNm><PstlAdr><AdrTp>BIZZ</AdrTp><AdrLine>1 Example Street</AdrLine><AdrLine>Sampletown AB1 2CD</AdrLine><AdrLine>United Kingdom</AdrLine></PstlAdr><Id><OrgId><AnyBIC>EXAMGB2LXXX</AnyBIC></OrgId></Id><CtryOfRes>GB</CtryOfRes></Sndr>
+      <Rcvr><Nm>Example Corp Ltd</Nm><PstlAdr><AdrTp>BIZZ</AdrTp><AdrLine>99 Sample Road</AdrLine><AdrLine>Testville XY9 8ZZ</AdrLine><AdrLine>United Kingdom</AdrLine></PstlAdr><Id><OrgId><Othr><Id>CUSTOMER-0001</Id></Othr></OrgId></Id><CtryOfRes>GB</CtryOfRes></Rcvr>
+      <BllgStmt>
+        <StmtId>STM-EXAMPLE-0001</StmtId>
+        <FrToDt><FrDt>2026-10-01</FrDt><ToDt>2026-10-31</ToDt></FrToDt>
+        <CreDtTm>2026-11-02T06:15:00Z</CreDtTm>
+        <Sts>ORGN</Sts>
+        <AcctChrtcs>
+          <AcctLvl>SUMM</AcctLvl>
+          <CshAcct><Id><IBAN>GB00EXAM00000000000001</IBAN></Id><Ccy>GBP</Ccy><Nm>Example operating account</Nm></CshAcct>
+          <AcctSvcr><FinInstnId>EXAMGB2LXXX</FinInstnId><BrnchId><Nm>Sampletown branch</Nm><PstlAdr><AdrTp>BIZZ</AdrTp><AdrLine>1 Example Street</AdrLine></PstlAdr></BrnchId></AcctSvcr>
+          <CompstnMtd>DDBT</CompstnMtd>
+          <DbtAcct><IBAN>GB00EXAM00000000000001</IBAN></DbtAcct>
+          <DelydDbtDt>2026-11-15</DelydDbtDt>
+          <SttlmAdvc>false</SttlmAdvc>
+          <AcctBalCcyCd>GBP</AcctBalCcyCd><SttlmCcyCd>GBP</SttlmCcyCd><HstCcyCd>GBP</HstCcyCd>
+          <Tax><ClctnMtd>MTDA</ClctnMtd><Rgn>GB</Rgn></Tax>
+          <AcctSvcrCtct><Nm>Billing team</Nm><EmailAdr>billing@example.com</EmailAdr></AcctSvcrCtct>
+        </AcctChrtcs>
+        <Compstn><Tp><Cd>AVGB</Cd></Tp><Val><Amt Ccy="GBP">250000.00</Amt><Sgn>true</Sgn></Val><CcyTp>STLM</CcyTp></Compstn>
+        <Compstn><Tp><Cd>ACRT</Cd></Tp><Val><Amt Ccy="GBP">0.0125</Amt><Sgn>true</Sgn></Val><CcyTp>STLM</CcyTp></Compstn>
+        <Svc>
+          <SvcDtl><BkSvc><Id>PAY-DOM-OUT</Id><Desc>Domestic payment, outbound</Desc><CmonCd><Issr>TWIST</Issr><Id>PAY</Id></CmonCd></BkSvc><Vol>412</Vol></SvcDtl>
+          <Pric><Ccy>GBP</Ccy><UnitPric><Amt Ccy="GBP">0.35</Amt><Sgn>true</Sgn></UnitPric><Mtd>UPRC</Mtd></Pric>
+          <PmtMtd>FLAT</PmtMtd>
+          <OrgnlChrgPric><Amt Ccy="GBP">144.20</Amt><Sgn>true</Sgn></OrgnlChrgPric>
+          <OrgnlChrgSttlmAmt><Amt Ccy="GBP">144.20</Amt><Sgn>true</Sgn></OrgnlChrgSttlmAmt>
+          <TaxDsgnt><Cd>TAXD</Cd><Rgn>GB</Rgn><TaxRsn><Cd>STND</Cd><Expltn>Standard rate</Expltn></TaxRsn></TaxDsgnt>
+          <TaxClctn><MtdA>
+            <SvcChrgHstAmt><Amt Ccy="GBP">144.20</Amt><Sgn>true</Sgn></SvcChrgHstAmt>
+            <SvcTax><HstAmt><Amt Ccy="GBP">28.84</Amt><Sgn>true</Sgn></HstAmt><PricgAmt><Amt Ccy="GBP">28.84</Amt><Sgn>true</Sgn></PricgAmt></SvcTax>
+            <TtlChrg><HstAmt><Amt Ccy="GBP">173.04</Amt><Sgn>true</Sgn></HstAmt><SttlmAmt><Amt Ccy="GBP">173.04</Amt><Sgn>true</Sgn></SttlmAmt><PricgAmt><Amt Ccy="GBP">173.04</Amt><Sgn>true</Sgn></PricgAmt></TtlChrg>
+            <TaxId><Nb>1</Nb><Desc>VAT</Desc><Rate>20.00</Rate><HstAmt><Amt Ccy="GBP">28.84</Amt><Sgn>true</Sgn></HstAmt><PricgAmt><Amt Ccy="GBP">28.84</Amt><Sgn>true</Sgn></PricgAmt></TaxId>
+          </MtdA></TaxClctn>
+        </Svc>
+        <Svc>
+          <SvcDtl><BkSvc><Id>PAY-INT-OUT</Id><Desc>International payment, outbound</Desc><CmonCd><Issr>TWIST</Issr><Id>PAY</Id></CmonCd></BkSvc><Vol>96</Vol></SvcDtl>
+          <Pric><Ccy>GBP</Ccy><UnitPric><Amt Ccy="GBP">11.50</Amt><Sgn>true</Sgn></UnitPric><Mtd>UPRC</Mtd></Pric>
+          <PmtMtd>FLAT</PmtMtd>
+          <OrgnlChrgPric><Amt Ccy="GBP">1104.00</Amt><Sgn>true</Sgn></OrgnlChrgPric>
+          <OrgnlChrgSttlmAmt><Amt Ccy="GBP">1104.00</Amt><Sgn>true</Sgn></OrgnlChrgSttlmAmt>
+          <TaxDsgnt><Cd>TAXD</Cd><Rgn>GB</Rgn><TaxRsn><Cd>STND</Cd><Expltn>Standard rate</Expltn></TaxRsn></TaxDsgnt>
+          <TaxClctn><MtdA>
+            <SvcChrgHstAmt><Amt Ccy="GBP">1104.00</Amt><Sgn>true</Sgn></SvcChrgHstAmt>
+            <SvcTax><HstAmt><Amt Ccy="GBP">220.80</Amt><Sgn>true</Sgn></HstAmt><PricgAmt><Amt Ccy="GBP">220.80</Amt><Sgn>true</Sgn></PricgAmt></SvcTax>
+            <TtlChrg><HstAmt><Amt Ccy="GBP">1324.80</Amt><Sgn>true</Sgn></HstAmt><SttlmAmt><Amt Ccy="GBP">1324.80</Amt><Sgn>true</Sgn></SttlmAmt><PricgAmt><Amt Ccy="GBP">1324.80</Amt><Sgn>true</Sgn></PricgAmt></TtlChrg>
+            <TaxId><Nb>1</Nb><Desc>VAT</Desc><Rate>20.00</Rate><HstAmt><Amt Ccy="GBP">220.80</Amt><Sgn>true</Sgn></HstAmt><PricgAmt><Amt Ccy="GBP">220.80</Amt><Sgn>true</Sgn></PricgAmt></TaxId>
+          </MtdA></TaxClctn>
+        </Svc>
+        <Svc>
+          <SvcDtl><BkSvc><Id>ACC-MAINT</Id><Desc>Account maintenance, monthly</Desc><CmonCd><Issr>TWIST</Issr><Id>ACC</Id></CmonCd></BkSvc><Vol>1</Vol></SvcDtl>
+          <Pric><Ccy>GBP</Ccy><UnitPric><Amt Ccy="GBP">45.00</Amt><Sgn>true</Sgn></UnitPric><Mtd>FCHG</Mtd></Pric>
+          <PmtMtd>FLAT</PmtMtd>
+          <OrgnlChrgPric><Amt Ccy="GBP">45.00</Amt><Sgn>true</Sgn></OrgnlChrgPric>
+          <OrgnlChrgSttlmAmt><Amt Ccy="GBP">45.00</Amt><Sgn>true</Sgn></OrgnlChrgSttlmAmt>
+          <TaxDsgnt><Cd>TAXD</Cd><Rgn>GB</Rgn><TaxRsn><Cd>STND</Cd><Expltn>Standard rate</Expltn></TaxRsn></TaxDsgnt>
+          <TaxClctn><MtdA>
+            <SvcChrgHstAmt><Amt Ccy="GBP">45.00</Amt><Sgn>true</Sgn></SvcChrgHstAmt>
+            <SvcTax><HstAmt><Amt Ccy="GBP">9.00</Amt><Sgn>true</Sgn></HstAmt><PricgAmt><Amt Ccy="GBP">9.00</Amt><Sgn>true</Sgn></PricgAmt></SvcTax>
+            <TtlChrg><HstAmt><Amt Ccy="GBP">54.00</Amt><Sgn>true</Sgn></HstAmt><SttlmAmt><Amt Ccy="GBP">54.00</Amt><Sgn>true</Sgn></SttlmAmt><PricgAmt><Amt Ccy="GBP">54.00</Amt><Sgn>true</Sgn></PricgAmt></TtlChrg>
+            <TaxId><Nb>1</Nb><Desc>VAT</Desc><Rate>20.00</Rate><HstAmt><Amt Ccy="GBP">9.00</Amt><Sgn>true</Sgn></HstAmt><PricgAmt><Amt Ccy="GBP">9.00</Amt><Sgn>true</Sgn></PricgAmt></TaxId>
+          </MtdA></TaxClctn>
+        </Svc>
+        <Svc>
+          <SvcDtl><BkSvc><Id>REB-VOL</Id><Desc>Volume rebate</Desc><CmonCd><Issr>TWIST</Issr><Id>REB</Id></CmonCd></BkSvc><Vol>1</Vol></SvcDtl>
+          <Pric><Ccy>GBP</Ccy><UnitPric><Amt Ccy="GBP">60.00</Amt><Sgn>true</Sgn></UnitPric><Mtd>FCHG</Mtd></Pric>
+          <PmtMtd>FLAT</PmtMtd>
+          <OrgnlChrgPric><Amt Ccy="GBP">60.00</Amt><Sgn>false</Sgn></OrgnlChrgPric>
+          <OrgnlChrgSttlmAmt><Amt Ccy="GBP">60.00</Amt><Sgn>false</Sgn></OrgnlChrgSttlmAmt>
+          <TaxDsgnt><Cd>TAXD</Cd><Rgn>GB</Rgn><TaxRsn><Cd>STND</Cd><Expltn>Standard rate</Expltn></TaxRsn></TaxDsgnt>
+          <TaxClctn><MtdA>
+            <SvcChrgHstAmt><Amt Ccy="GBP">60.00</Amt><Sgn>false</Sgn></SvcChrgHstAmt>
+            <SvcTax><HstAmt><Amt Ccy="GBP">12.00</Amt><Sgn>false</Sgn></HstAmt><PricgAmt><Amt Ccy="GBP">12.00</Amt><Sgn>false</Sgn></PricgAmt></SvcTax>
+            <TtlChrg><HstAmt><Amt Ccy="GBP">72.00</Amt><Sgn>false</Sgn></HstAmt><SttlmAmt><Amt Ccy="GBP">72.00</Amt><Sgn>false</Sgn></SttlmAmt><PricgAmt><Amt Ccy="GBP">72.00</Amt><Sgn>false</Sgn></PricgAmt></TtlChrg>
+            <TaxId><Nb>1</Nb><Desc>VAT</Desc><Rate>20.00</Rate><HstAmt><Amt Ccy="GBP">12.00</Amt><Sgn>false</Sgn></HstAmt><PricgAmt><Amt Ccy="GBP">12.00</Amt><Sgn>false</Sgn></PricgAmt></TaxId>
+          </MtdA></TaxClctn>
+        </Svc>
+        <TaxRgn>
+          <RgnNb>1</RgnNb><RgnNm>United Kingdom</RgnNm><CstmrTaxId>GB000000000</CstmrTaxId><PtDt>2026-10-31</PtDt>
+          <SndgFI><VATRegnNb>GB111111111</VATRegnNb></SndgFI><InvcNb>INV-EXAMPLE-0001</InvcNb>
+          <SttlmAmt><Amt Ccy="GBP">1479.84</Amt><Sgn>true</Sgn></SttlmAmt>
+          <TaxDueToRgn><Amt Ccy="GBP">246.64</Amt><Sgn>true</Sgn></TaxDueToRgn>
+        </TaxRgn>
+      </BllgStmt>
+    </BllgStmtGrp>
+  </BkSvcsBllgStmt>
+</Document>

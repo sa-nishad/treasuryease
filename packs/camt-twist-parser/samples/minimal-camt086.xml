@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Document xmlns="urn:iso:std:iso:20022:tech:xsd:camt.086.001.03">
+  <BkSvcsBllgStmt>
+    <RptHdr>
+      <RptId>EXAMPLE-RPT-0001</RptId>
+      <CreDtTm>2026-11-02T06:15:00Z</CreDtTm>
+      <FrToDt><FrDt>2026-10-01</FrDt><ToDt>2026-10-31</ToDt></FrToDt>
+      <Sndr><Nm>Example Bank plc</Nm></Sndr>
+    </RptHdr>
+    <BllgStmtGrp>
+      <Stmt>
+        <StmtId>STM-GBP-1001</StmtId>
+        <Ccy>GBP</Ccy>
+        <Acct><Id>GB00EXAM00000001</Id></Acct>
+        <Svc>
+          <SvcCd>CHAPS-OUT</SvcCd><Desc>CHAPS payment outbound</Desc><Vol>48</Vol><UnitPric Ccy="GBP">12.50</UnitPric>
+          <Chrg><Amt Ccy="GBP">600.00</Amt><CdtDbtInd>DBIT</CdtDbtInd></Chrg>
+          <Tax><Tp>VAT</Tp><Rate>20</Rate><Amt Ccy="GBP">120.00</Amt></Tax>
+        </Svc>
+        <Svc>
+          <SvcCd>FPS-OUT</SvcCd><Desc>Faster Payments outbound</Desc><Vol>1320</Vol><UnitPric Ccy="GBP">0.15</UnitPric>
+          <Chrg><Amt Ccy="GBP">198.00</Amt><CdtDbtInd>DBIT</CdtDbtInd></Chrg>
+          <Tax><Tp>VAT</Tp><Rate>20</Rate><Amt Ccy="GBP">39.60</Amt></Tax>
+        </Svc>
+        <Svc>
+          <SvcCd>INT-CR</SvcCd><Desc>Credit interest adjustment</Desc><Vol>1</Vol>
+          <Chrg><Amt Ccy="GBP">42.17</Amt><CdtDbtInd>CRDT</CdtDbtInd></Chrg>
+        </Svc>
+      </Stmt>
+      <Stmt>
+        <StmtId>STM-EUR-2001</StmtId>
+        <Ccy>EUR</Ccy>
+        <Acct><Id>GB00EXAM00000002</Id></Acct>
+        <Svc>
+          <SvcCd>SEPA-OUT</SvcCd><Desc>SEPA credit transfer outbound</Desc><Vol>310</Vol><UnitPric Ccy="EUR">0.20</UnitPric>
+          <Chrg><Amt Ccy="EUR">62.00</Amt><CdtDbtInd>DBIT</CdtDbtInd></Chrg>
+          <Tax><Tp>VAT</Tp><Rate>20</Rate><Amt Ccy="EUR">12.40</Amt></Tax>
+        </Svc>
+        <Svc>
+          <SvcCd>ACCT-MAINT</SvcCd><Desc>Account maintenance</Desc><Vol>1</Vol>
+          <Chrg><Amt Ccy="EUR">75.00</Amt><CdtDbtInd>DBIT</CdtDbtInd></Chrg>
+          <Tax><Tp>VAT</Tp><Rate>20</Rate><Amt Ccy="EUR">15.00</Amt></Tax>
+          <Tax><Tp>LOCAL</Tp><Rate>2</Rate><Amt Ccy="EUR">1.50</Amt></Tax>
+        </Svc>
+      </Stmt>
+    </BllgStmtGrp>
+  </BkSvcsBllgStmt>
+</Document>

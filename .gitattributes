@@ -1,0 +1,2 @@
+* text=auto eol=lf
+packs/*/samples/expected/*.csv -text

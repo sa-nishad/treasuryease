@@ -1,0 +1,5 @@
+Source_file,MessageId,CreationDateTime,Name,From,To,AccountNumber,Currency,ServiceCode,Description,Volume,UnitPrice,UnitPrice_currency,Fee,Fee_currency
+minimal-twist.xml,TWIST-EX-7781,2026-11-03T05:40:00Z,Example Bank plc,2026-10-01,2026-10-31,00000003,GBP,BACS-IN,BACS credits received,940,0.04,GBP,37.60,GBP
+minimal-twist.xml,TWIST-EX-7781,2026-11-03T05:40:00Z,Example Bank plc,2026-10-01,2026-10-31,00000003,GBP,CHQ-DEP,Cheque deposits,58,0.60,GBP,34.80,GBP
+minimal-twist.xml,TWIST-EX-7781,2026-11-03T05:40:00Z,Example Bank plc,2026-10-01,2026-10-31,00000003,GBP,SWIFT-MT,SWIFT message fees,212,0.25,GBP,53.00,GBP
+minimal-twist.xml,TWIST-EX-7781,2026-11-03T05:40:00Z,Example Bank plc,2026-10-01,2026-10-31,00000003,GBP,ONL-BNK,Online banking licence,1,,,250.00,GBP

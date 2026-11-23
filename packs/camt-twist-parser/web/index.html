@@ -1,0 +1,974 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>CAMT and TWIST Parser</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+/* Layout idea: fixed settings rail on the left, results workspace (summary tiles, tabs, table) on the right. */
+:root{
+  --bg:#f3f5f7; --panel:#ffffff; --ink:#14202b; --muted:#5a6b7b; --line:#d9e0e6;
+  --accent:#0b6e6e; --accent-ink:#ffffff; --soft:#e3f1f0; --head:#eef2f5;
+  --ok:#1b7a43; --warn:#9a5b00; --bad:#b3261e;
+  --font:"IBM Plex Sans",system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+  --mono:"IBM Plex Mono",ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#0e151b; --panel:#151e26; --ink:#e5ecf2; --muted:#93a3b2; --line:#25323d;
+    --accent:#4cc2b8; --accent-ink:#04201d; --soft:#12302f; --head:#1b2630;
+    --ok:#5fd08c; --warn:#e6a448; --bad:#ff8a80; color-scheme:dark;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#0e151b; --panel:#151e26; --ink:#e5ecf2; --muted:#93a3b2; --line:#25323d;
+  --accent:#4cc2b8; --accent-ink:#04201d; --soft:#12302f; --head:#1b2630;
+  --ok:#5fd08c; --warn:#e6a448; --bad:#ff8a80; color-scheme:dark;
+}
+*{box-sizing:border-box}
+html,body{height:100%;margin:0}
+body{background:var(--bg);color:var(--ink);font:14px/1.45 var(--font);-webkit-font-smoothing:antialiased}
+button,input,select{font:inherit;color:inherit}
+h1,h2{margin:0}
+.app{height:100%;display:grid;grid-template-columns:320px minmax(0,1fr)}
+.side{background:var(--panel);border-right:1px solid var(--line);overflow:auto;padding:20px 18px;display:flex;flex-direction:column;gap:20px}
+.main{min-width:0;min-height:0;display:flex;flex-direction:column;gap:14px;padding:18px 20px}
+.brand{display:flex;gap:12px;align-items:center}
+.mark{width:38px;height:38px;border-radius:9px;background:var(--accent);color:var(--accent-ink);display:grid;place-items:center;flex:none}
+.brand h1{font-size:17px;font-weight:600;letter-spacing:-.01em}
+.brand p{margin:0;color:var(--muted);font-size:12.5px}
+.vh{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+.drop{display:block;border:1.5px dashed var(--line);border-radius:10px;padding:18px 14px;text-align:center;cursor:pointer;background:var(--bg);transition:border-color .15s,background .15s}
+.drop strong{display:block;font-weight:600}
+.drop small{display:block;color:var(--muted);margin-top:4px;font-size:12px}
+.drop:hover,.drop.over,#file:focus-visible+.drop{border-color:var(--accent);background:var(--soft)}
+.sec h2{font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);font-weight:600;margin-bottom:8px}
+.files{list-style:none;margin:0 0 8px;padding:0;display:flex;flex-direction:column;gap:6px}
+.file{border:1px solid var(--line);border-radius:8px;padding:8px 10px;display:grid;grid-template-columns:1fr auto;gap:2px 8px;background:var(--panel);cursor:pointer}
+.file.sel{border-color:var(--accent);box-shadow:inset 3px 0 0 var(--accent)}
+.file .nm{font-weight:500;overflow-wrap:anywhere}
+.file .meta{grid-column:1;color:var(--muted);font-size:12px}
+.file .err{grid-column:1/-1;color:var(--bad);font-size:12px}
+.chip{display:inline-block;font:500 11px/1 var(--mono);padding:3px 6px;border-radius:5px;background:var(--head);color:var(--muted);border:1px solid var(--line);margin-left:6px;white-space:nowrap}
+.chip.on{background:var(--soft);color:var(--accent);border-color:var(--accent)}
+.chip.ex{background:transparent}
+.x{border:0;background:none;color:var(--muted);cursor:pointer;font-size:18px;line-height:1;padding:0 4px;border-radius:4px}
+.x:hover{color:var(--bad)}
+.btnrow{display:flex;gap:8px;flex-wrap:wrap}
+.btn{border:1px solid var(--line);background:var(--panel);border-radius:8px;padding:7px 12px;cursor:pointer;font-weight:500}
+.btn:hover{border-color:var(--accent)}
+.btn.pri{background:var(--accent);color:var(--accent-ink);border-color:var(--accent)}
+.btn.pri:hover{filter:brightness(1.07)}
+.btn:disabled{opacity:.45;cursor:not-allowed}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.field{display:flex;flex-direction:column;gap:4px;margin-bottom:10px}
+.field label,.lbl{font-size:12.5px;color:var(--muted)}
+select,input[type=search]{background:var(--panel);border:1px solid var(--line);border-radius:7px;padding:7px 9px;width:100%}
+.chk{display:flex;gap:8px;align-items:flex-start;margin:7px 0;font-size:13.5px}
+.chk input{margin-top:3px;accent-color:var(--accent)}
+.hint{color:var(--muted);font-size:12px;margin:4px 0 0}
+.field .seg{align-self:flex-start}
+.seg{display:inline-flex;border:1px solid var(--line);border-radius:8px;overflow:hidden}
+.seg label{padding:6px 12px;cursor:pointer;font-size:13px;background:var(--panel)}
+.seg input{position:absolute;opacity:0;pointer-events:none}
+.seg input:checked+span{color:var(--accent-ink)}
+.seg label:has(input:checked){background:var(--accent);color:var(--accent-ink)}
+.seg label:has(input:focus-visible){outline:2px solid var(--accent);outline-offset:-2px}
+.tiles{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px}
+.tile{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:10px 14px;min-width:0}
+.tile .k{font-size:11.5px;color:var(--muted)}
+.tile .v{font:500 20px/1.25 var(--mono);font-variant-numeric:tabular-nums;overflow-wrap:anywhere}
+.tile .v.sm{font-size:14px;line-height:1.5}
+.bar{display:flex;gap:10px;align-items:center;justify-content:space-between;flex-wrap:wrap}
+.tabs{display:flex;gap:2px;border-bottom:1px solid var(--line);flex:1;min-width:260px}
+.tab{border:0;background:none;padding:9px 14px;cursor:pointer;color:var(--muted);font-weight:500;border-bottom:2px solid transparent;margin-bottom:-1px}
+.tab[aria-selected=true]{color:var(--ink);border-bottom-color:var(--accent)}
+.actions{display:flex;gap:8px;align-items:center}
+.toast{font-size:12.5px;color:var(--ok);min-width:0}
+.panel{flex:1;min-height:0;background:var(--panel);border:1px solid var(--line);border-radius:10px;display:flex;flex-direction:column;overflow:hidden}
+.toolbar{display:flex;gap:10px;align-items:center;flex-wrap:wrap;padding:10px 12px;border-bottom:1px solid var(--line)}
+.toolbar .q{flex:1;min-width:180px;max-width:360px}
+.count{color:var(--muted);font-size:12.5px;margin-left:auto}
+.pager{display:flex;gap:6px;align-items:center}
+.pager select{width:auto}
+.tablewrap{flex:1;min-height:0;overflow:auto}
+table{border-collapse:separate;border-spacing:0;font-size:13px;min-width:100%}
+th,td{padding:6px 12px;border-bottom:1px solid var(--line);text-align:left;white-space:nowrap;max-width:36ch;overflow:hidden;text-overflow:ellipsis}
+thead th{position:sticky;top:0;background:var(--head);z-index:1;padding:0;font-weight:600}
+thead th button{all:unset;box-sizing:border-box;display:flex;gap:6px;align-items:center;width:100%;padding:8px 12px;cursor:pointer;font-weight:600;white-space:nowrap}
+thead th button:hover{color:var(--accent)}
+thead th button:focus-visible{outline:2px solid var(--accent);outline-offset:-2px}
+th.num button{justify-content:flex-end}
+td.num{text-align:right;font-family:var(--mono);font-variant-numeric:tabular-nums}
+td.idx,th.idx{color:var(--muted);font-family:var(--mono);text-align:right;width:1%}
+th.idx{padding:8px 12px}
+tbody tr:hover td{background:var(--soft)}
+.arr{font-size:9px;color:var(--accent)}
+.cols{position:relative}
+.cols summary{list-style:none;cursor:pointer;border:1px solid var(--line);border-radius:7px;padding:7px 11px;background:var(--panel);font-weight:500}
+.cols summary::-webkit-details-marker{display:none}
+.cols .menu{position:absolute;z-index:5;top:calc(100% + 6px);left:0;width:300px;max-height:340px;overflow:auto;background:var(--panel);border:1px solid var(--line);border-radius:9px;padding:8px 10px;box-shadow:0 10px 30px rgba(0,0,0,.18)}
+.menu .chk{margin:5px 0}
+.menu .btnrow{margin-bottom:6px}
+.pad{padding:16px;overflow:auto;flex:1;min-height:0}
+.pad h3{margin:18px 0 8px;font-size:13px}
+.pad h3:first-child{margin-top:0}
+.grid2{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:10px 16px;margin-bottom:14px}
+.mini{border:1px solid var(--line);border-radius:8px;overflow:auto;margin-bottom:6px}
+.mini td,.mini th{max-width:none}
+.mini thead th{position:static;padding:7px 12px}
+.warn{color:var(--warn);margin:4px 0}
+.tree,.tree ul{list-style:none;margin:0;padding-left:18px;font:13px/1.7 var(--mono)}
+.tree{padding-left:0}
+.tree summary{cursor:pointer}
+.tree .nm{font-weight:500}
+.tree .smp{color:var(--muted);margin-left:12px}
+.tree .leaf{padding-left:15px}
+.link{border:0;background:none;color:var(--accent);cursor:pointer;margin-left:10px;font:inherit;text-decoration:underline;padding:0}
+pre.csv{margin:0;padding:12px 14px;border:1px solid var(--line);border-radius:8px;background:var(--bg);font:12.5px/1.55 var(--mono);overflow:auto;white-space:pre;max-height:100%}
+.empty{margin:auto;text-align:center;color:var(--muted);padding:40px 16px;max-width:420px}
+.empty strong{display:block;color:var(--ink);font-size:16px;margin-bottom:6px}
+@media (max-width:900px){
+  body{overflow:auto}
+  .app{display:block;height:auto}
+  .side{border-right:0;border-bottom:1px solid var(--line)}
+  .main{padding:14px 16px}
+  .panel{min-height:420px}
+  .tablewrap{max-height:70vh}
+}
+@media (prefers-reduced-motion: reduce){*{transition:none!important}}
+</style>
+</head>
+<body>
+<div class="app">
+  <aside class="side">
+    <div class="brand">
+      <div class="mark" aria-hidden="true">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 6 3 12l5 6"/><path d="m16 6 5 6-5 6"/><path d="M13.5 5 10.5 19"/></svg>
+      </div>
+      <div><h1>CAMT and TWIST Parser</h1><p>Bank fee statements to CSV and JSON</p></div>
+    </div>
+
+    <div>
+      <input id="file" class="vh" type="file" multiple accept=".xml,.txt,.twist,text/xml,application/xml">
+      <label class="drop" id="drop" for="file">
+        <strong>Drop statement files here</strong>
+        <span>or click to browse</span>
+        <small>camt.086 or TWIST XML, several at once. Files are read in this browser and never uploaded.</small>
+      </label>
+    </div>
+
+    <div class="sec">
+      <h2>Files</h2>
+      <ul class="files" id="files"></ul>
+      <div class="btnrow">
+        <button class="btn" id="examples" type="button">Load examples</button>
+        <button class="btn" id="clear" type="button">Clear all</button>
+      </div>
+    </div>
+
+    <div class="sec">
+      <h2>Rows</h2>
+      <div class="field">
+        <label for="rowSel">One CSV row per</label>
+        <select id="rowSel"></select>
+        <p class="hint" id="rowHint"></p>
+      </div>
+      <label class="chk"><input type="checkbox" id="ctx" checked><span>Repeat header and statement fields on every row</span></label>
+      <label class="chk"><input type="checkbox" id="src" checked><span>Add a source file column</span></label>
+      <label class="chk"><input type="checkbox" id="addr"><span>Include postal address fields</span></label>
+      <label class="chk"><input type="checkbox" id="signed"><span>Add signed amounts (DBIT becomes negative)</span></label>
+    </div>
+
+    <div class="sec">
+      <h2>Column names</h2>
+      <div class="seg" role="radiogroup" aria-label="Column names">
+        <label><input type="radio" name="naming" value="short" checked><span>Short</span></label>
+        <label><input type="radio" name="naming" value="full"><span>Full path</span></label>
+      </div>
+      <p class="hint">Short uses the fewest path parts that keep each name unique.</p>
+    </div>
+  </aside>
+
+  <main class="main">
+    <div class="tiles" id="tiles"></div>
+    <div class="bar">
+      <div class="tabs" role="tablist" id="tabs">
+        <button class="tab" role="tab" data-tab="table">Table</button>
+        <button class="tab" role="tab" data-tab="summary">Summary</button>
+        <button class="tab" role="tab" data-tab="structure">Structure</button>
+        <button class="tab" role="tab" data-tab="csv">Export</button>
+      </div>
+      <div class="actions">
+        <span class="toast" id="toast" role="status" aria-live="polite"></span>
+        <button class="btn" id="copy" type="button">Copy CSV</button>
+        <button class="btn pri" id="download" type="button">Download CSV</button>
+      </div>
+    </div>
+    <div class="panel" id="view"></div>
+  </main>
+</div>
+
+<script>
+(()=>{
+'use strict';
+const AMT_RE=/amt|amount|chrg|charge|fee|tax|vat|ttl|total|pric|cost/i;
+const NOT_AMT_RE=/(number|identifier|id|nb|code|cd|region|rgn|designation|method|mtd|reason|rsn|rate|ref)$/i;
+const NUM_RE=/^[+-]?(\d+(\.\d*)?|\.\d+)$/;
+const CCY_RE=/^(ccy|currency|currencycode)$/i;
+const CCY_NAME_RE=/(?:^|[a-z])(?:ccy|currency)(?:cd|code)?$/i;
+const SERVICE_ROWS=/^(svc|service)$/i;
+const ADDRESS_NAMES=new Set(['PstlAdr','postAddress']);
+const SIGN_FIELDS=[['CdtDbtInd','DBIT'],['Sgn','false']];
+const esc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const $=(s,r=document)=>r.querySelector(s);
+const nf=n=>n.toLocaleString('en-GB');
+let uid=0;
+
+const S={files:[],sel:null,rowName:'auto',ctx:true,src:true,addr:false,signed:false,naming:'short',
+  hidden:new Set(),search:'',sort:null,page:0,size:100,tab:'table',
+  csv:{delim:',',quote:'min',eol:'\r\n',bom:false,header:true,decimal:'.'},fmt:'csv',js:{num:true,pretty:true},
+  cols:[],rows:[],view:[],labels:new Map(),numeric:new Set(),amount:new Set(),totals:new Map(),warn:[],rowOptions:[],dl:null};
+
+/* ---------- examples (synthetic: real element names, invented values) ---------- */
+const EXAMPLES=[
+{name:'example-camt086.xml',text:`<?xml version="1.0" encoding="UTF-8"?>
+<Document xmlns="urn:iso:std:iso:20022:tech:xsd:camt.086.001.01">
+  <BkSvcsBllgStmt>
+    <RptHdr><RptId>000000000001</RptId></RptHdr>
+    <BllgStmtGrp>
+      <GrpId>Group 1 of 1</GrpId>
+      <Sndr><Nm>Example Bank plc</Nm><LglNm>Example Bank plc</LglNm><PstlAdr><AdrTp>BIZZ</AdrTp><AdrLine>1 Example Street</AdrLine><AdrLine>Sampletown AB1 2CD</AdrLine><AdrLine>United Kingdom</AdrLine></PstlAdr><Id><OrgId><AnyBIC>EXAMGB2LXXX</AnyBIC></OrgId></Id><CtryOfRes>GB</CtryOfRes></Sndr>
+      <Rcvr><Nm>Example Corp Ltd</Nm><PstlAdr><AdrTp>BIZZ</AdrTp><AdrLine>99 Sample Road</AdrLine><AdrLine>Testville XY9 8ZZ</AdrLine><AdrLine>United Kingdom</AdrLine></PstlAdr><Id><OrgId><Othr><Id>CUSTOMER-0001</Id></Othr></OrgId></Id><CtryOfRes>GB</CtryOfRes></Rcvr>
+      <BllgStmt>
+        <StmtId>STM-EXAMPLE-0001</StmtId>
+        <FrToDt><FrDt>2026-10-01</FrDt><ToDt>2026-10-31</ToDt></FrToDt>
+        <CreDtTm>2026-11-02T06:15:00Z</CreDtTm>
+        <Sts>ORGN</Sts>
+        <AcctChrtcs>
+          <AcctLvl>SUMM</AcctLvl>
+          <CshAcct><Id><IBAN>GB00EXAM00000000000001</IBAN></Id><Ccy>GBP</Ccy><Nm>Example operating account</Nm></CshAcct>
+          <AcctSvcr><FinInstnId>EXAMGB2LXXX</FinInstnId><BrnchId><Nm>Sampletown branch</Nm><PstlAdr><AdrTp>BIZZ</AdrTp><AdrLine>1 Example Street</AdrLine></PstlAdr></BrnchId></AcctSvcr>
+          <CompstnMtd>DDBT</CompstnMtd>
+          <DbtAcct><IBAN>GB00EXAM00000000000001</IBAN></DbtAcct>
+          <DelydDbtDt>2026-11-15</DelydDbtDt>
+          <SttlmAdvc>false</SttlmAdvc>
+          <AcctBalCcyCd>GBP</AcctBalCcyCd><SttlmCcyCd>GBP</SttlmCcyCd><HstCcyCd>GBP</HstCcyCd>
+          <Tax><ClctnMtd>MTDA</ClctnMtd><Rgn>GB</Rgn></Tax>
+          <AcctSvcrCtct><Nm>Billing team</Nm><EmailAdr>billing@example.com</EmailAdr></AcctSvcrCtct>
+        </AcctChrtcs>
+        <Compstn><Tp><Cd>AVGB</Cd></Tp><Val><Amt Ccy="GBP">250000.00</Amt><Sgn>true</Sgn></Val><CcyTp>STLM</CcyTp></Compstn>
+        <Compstn><Tp><Cd>ACRT</Cd></Tp><Val><Amt Ccy="GBP">0.0125</Amt><Sgn>true</Sgn></Val><CcyTp>STLM</CcyTp></Compstn>
+        <Svc>
+          <SvcDtl><BkSvc><Id>PAY-DOM-OUT</Id><Desc>Domestic payment, outbound</Desc><CmonCd><Issr>TWIST</Issr><Id>PAY</Id></CmonCd></BkSvc><Vol>412</Vol></SvcDtl>
+          <Pric><Ccy>GBP</Ccy><UnitPric><Amt Ccy="GBP">0.35</Amt><Sgn>true</Sgn></UnitPric><Mtd>UPRC</Mtd></Pric>
+          <PmtMtd>FLAT</PmtMtd>
+          <OrgnlChrgPric><Amt Ccy="GBP">144.20</Amt><Sgn>true</Sgn></OrgnlChrgPric>
+          <OrgnlChrgSttlmAmt><Amt Ccy="GBP">144.20</Amt><Sgn>true</Sgn></OrgnlChrgSttlmAmt>
+          <TaxDsgnt><Cd>TAXD</Cd><Rgn>GB</Rgn><TaxRsn><Cd>STND</Cd><Expltn>Standard rate</Expltn></TaxRsn></TaxDsgnt>
+          <TaxClctn><MtdA>
+            <SvcChrgHstAmt><Amt Ccy="GBP">144.20</Amt><Sgn>true</Sgn></SvcChrgHstAmt>
+            <SvcTax><HstAmt><Amt Ccy="GBP">28.84</Amt><Sgn>true</Sgn></HstAmt><PricgAmt><Amt Ccy="GBP">28.84</Amt><Sgn>true</Sgn></PricgAmt></SvcTax>
+            <TtlChrg><HstAmt><Amt Ccy="GBP">173.04</Amt><Sgn>true</Sgn></HstAmt><SttlmAmt><Amt Ccy="GBP">173.04</Amt><Sgn>true</Sgn></SttlmAmt><PricgAmt><Amt Ccy="GBP">173.04</Amt><Sgn>true</Sgn></PricgAmt></TtlChrg>
+            <TaxId><Nb>1</Nb><Desc>VAT</Desc><Rate>20.00</Rate><HstAmt><Amt Ccy="GBP">28.84</Amt><Sgn>true</Sgn></HstAmt><PricgAmt><Amt Ccy="GBP">28.84</Amt><Sgn>true</Sgn></PricgAmt></TaxId>
+          </MtdA></TaxClctn>
+        </Svc>
+        <Svc>
+          <SvcDtl><BkSvc><Id>PAY-INT-OUT</Id><Desc>International payment, outbound</Desc><CmonCd><Issr>TWIST</Issr><Id>PAY</Id></CmonCd></BkSvc><Vol>96</Vol></SvcDtl>
+          <Pric><Ccy>GBP</Ccy><UnitPric><Amt Ccy="GBP">11.50</Amt><Sgn>true</Sgn></UnitPric><Mtd>UPRC</Mtd></Pric>
+          <PmtMtd>FLAT</PmtMtd>
+          <OrgnlChrgPric><Amt Ccy="GBP">1104.00</Amt><Sgn>true</Sgn></OrgnlChrgPric>
+          <OrgnlChrgSttlmAmt><Amt Ccy="GBP">1104.00</Amt><Sgn>true</Sgn></OrgnlChrgSttlmAmt>
+          <TaxDsgnt><Cd>TAXD</Cd><Rgn>GB</Rgn><TaxRsn><Cd>STND</Cd><Expltn>Standard rate</Expltn></TaxRsn></TaxDsgnt>
+          <TaxClctn><MtdA>
+            <SvcChrgHstAmt><Amt Ccy="GBP">1104.00</Amt><Sgn>true</Sgn></SvcChrgHstAmt>
+            <SvcTax><HstAmt><Amt Ccy="GBP">220.80</Amt><Sgn>true</Sgn></HstAmt><PricgAmt><Amt Ccy="GBP">220.80</Amt><Sgn>true</Sgn></PricgAmt></SvcTax>
+            <TtlChrg><HstAmt><Amt Ccy="GBP">1324.80</Amt><Sgn>true</Sgn></HstAmt><SttlmAmt><Amt Ccy="GBP">1324.80</Amt><Sgn>true</Sgn></SttlmAmt><PricgAmt><Amt Ccy="GBP">1324.80</Amt><Sgn>true</Sgn></PricgAmt></TtlChrg>
+            <TaxId><Nb>1</Nb><Desc>VAT</Desc><Rate>20.00</Rate><HstAmt><Amt Ccy="GBP">220.80</Amt><Sgn>true</Sgn></HstAmt><PricgAmt><Amt Ccy="GBP">220.80</Amt><Sgn>true</Sgn></PricgAmt></TaxId>
+          </MtdA></TaxClctn>
+        </Svc>
+        <Svc>
+          <SvcDtl><BkSvc><Id>ACC-MAINT</Id><Desc>Account maintenance, monthly</Desc><CmonCd><Issr>TWIST</Issr><Id>ACC</Id></CmonCd></BkSvc><Vol>1</Vol></SvcDtl>
+          <Pric><Ccy>GBP</Ccy><UnitPric><Amt Ccy="GBP">45.00</Amt><Sgn>true</Sgn></UnitPric><Mtd>FCHG</Mtd></Pric>
+          <PmtMtd>FLAT</PmtMtd>
+          <OrgnlChrgPric><Amt Ccy="GBP">45.00</Amt><Sgn>true</Sgn></OrgnlChrgPric>
+          <OrgnlChrgSttlmAmt><Amt Ccy="GBP">45.00</Amt><Sgn>true</Sgn></OrgnlChrgSttlmAmt>
+          <TaxDsgnt><Cd>TAXD</Cd><Rgn>GB</Rgn><TaxRsn><Cd>STND</Cd><Expltn>Standard rate</Expltn></TaxRsn></TaxDsgnt>
+          <TaxClctn><MtdA>
+            <SvcChrgHstAmt><Amt Ccy="GBP">45.00</Amt><Sgn>true</Sgn></SvcChrgHstAmt>
+            <SvcTax><HstAmt><Amt Ccy="GBP">9.00</Amt><Sgn>true</Sgn></HstAmt><PricgAmt><Amt Ccy="GBP">9.00</Amt><Sgn>true</Sgn></PricgAmt></SvcTax>
+            <TtlChrg><HstAmt><Amt Ccy="GBP">54.00</Amt><Sgn>true</Sgn></HstAmt><SttlmAmt><Amt Ccy="GBP">54.00</Amt><Sgn>true</Sgn></SttlmAmt><PricgAmt><Amt Ccy="GBP">54.00</Amt><Sgn>true</Sgn></PricgAmt></TtlChrg>
+            <TaxId><Nb>1</Nb><Desc>VAT</Desc><Rate>20.00</Rate><HstAmt><Amt Ccy="GBP">9.00</Amt><Sgn>true</Sgn></HstAmt><PricgAmt><Amt Ccy="GBP">9.00</Amt><Sgn>true</Sgn></PricgAmt></TaxId>
+          </MtdA></TaxClctn>
+        </Svc>
+        <Svc>
+          <SvcDtl><BkSvc><Id>REB-VOL</Id><Desc>Volume rebate</Desc><CmonCd><Issr>TWIST</Issr><Id>REB</Id></CmonCd></BkSvc><Vol>1</Vol></SvcDtl>
+          <Pric><Ccy>GBP</Ccy><UnitPric><Amt Ccy="GBP">60.00</Amt><Sgn>true</Sgn></UnitPric><Mtd>FCHG</Mtd></Pric>
+          <PmtMtd>FLAT</PmtMtd>
+          <OrgnlChrgPric><Amt Ccy="GBP">60.00</Amt><Sgn>false</Sgn></OrgnlChrgPric>
+          <OrgnlChrgSttlmAmt><Amt Ccy="GBP">60.00</Amt><Sgn>false</Sgn></OrgnlChrgSttlmAmt>
+          <TaxDsgnt><Cd>TAXD</Cd><Rgn>GB</Rgn><TaxRsn><Cd>STND</Cd><Expltn>Standard rate</Expltn></TaxRsn></TaxDsgnt>
+          <TaxClctn><MtdA>
+            <SvcChrgHstAmt><Amt Ccy="GBP">60.00</Amt><Sgn>false</Sgn></SvcChrgHstAmt>
+            <SvcTax><HstAmt><Amt Ccy="GBP">12.00</Amt><Sgn>false</Sgn></HstAmt><PricgAmt><Amt Ccy="GBP">12.00</Amt><Sgn>false</Sgn></PricgAmt></SvcTax>
+            <TtlChrg><HstAmt><Amt Ccy="GBP">72.00</Amt><Sgn>false</Sgn></HstAmt><SttlmAmt><Amt Ccy="GBP">72.00</Amt><Sgn>false</Sgn></SttlmAmt><PricgAmt><Amt Ccy="GBP">72.00</Amt><Sgn>false</Sgn></PricgAmt></TtlChrg>
+            <TaxId><Nb>1</Nb><Desc>VAT</Desc><Rate>20.00</Rate><HstAmt><Amt Ccy="GBP">12.00</Amt><Sgn>false</Sgn></HstAmt><PricgAmt><Amt Ccy="GBP">12.00</Amt><Sgn>false</Sgn></PricgAmt></TaxId>
+          </MtdA></TaxClctn>
+        </Svc>
+        <TaxRgn>
+          <RgnNb>1</RgnNb><RgnNm>United Kingdom</RgnNm><CstmrTaxId>GB000000000</CstmrTaxId><PtDt>2026-10-31</PtDt>
+          <SndgFI><VATRegnNb>GB111111111</VATRegnNb></SndgFI><InvcNb>INV-EXAMPLE-0001</InvcNb>
+          <SttlmAmt><Amt Ccy="GBP">1479.84</Amt><Sgn>true</Sgn></SttlmAmt>
+          <TaxDueToRgn><Amt Ccy="GBP">246.64</Amt><Sgn>true</Sgn></TaxDueToRgn>
+        </TaxRgn>
+      </BllgStmt>
+    </BllgStmtGrp>
+  </BkSvcsBllgStmt>
+</Document>`},
+{name:'example-twist.xml',text:`<?xml version="1.0" encoding="UTF-8"?>
+<Twist xmlns="http://www.twiststandards.org/3.1/ElectronicBilling" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:type="ElectronicBillingMsg">
+  <header xsi:type="ResponseMessageHeader"><messageId>EXAMPLE-MSG-0001</messageId><inReplyTo>EXAMPLE-REQ-0001</inReplyTo><sentBy id="_EXAMPLEBANK_"><typedPartyId><partyId>EXAMPLE</partyId><partyIdType>EXAMPLE</partyIdType></typedPartyId></sentBy><creationTimestamp>2026-11-03T05:40:00.000Z</creationTimestamp></header>
+  <electronicStatement>
+    <statementHeader>
+      <stmtSender><orgId><orgIdType>SW</orgIdType><orgIdNum>EXAMGB2L</orgIdNum></orgId><name>Example Bank plc</name><legalName>Example Bank plc</legalName><contactInfo><postAddress><addressLine>1 Example Street</addressLine><city>Sampletown</city><countrySubDivision><name>Exampleshire</name></countrySubDivision><country>GB</country><postCode>AB1 2CD</postCode></postAddress></contactInfo></stmtSender>
+      <stmtReceiver><name>Example Corp Ltd</name><legalName>Example Corp Ltd</legalName><contactInfo><postAddress><city>Testville</city><country>GB</country></postAddress></contactInfo></stmtReceiver>
+    </statementHeader>
+    <statement>
+      <account><accountLevel>SUMM</accountLevel><bban>EXAM00000001</bban><iban>GB00EXAM00000000000001</iban><statementStartDate>2026-10-01</statementStartDate><statementEndDate>2026-10-31</statementEndDate><statementProductionDate>2026-11-02</statementProductionDate><statementStatus>ORGN</statementStatus><accountName>Example operating account</accountName><compensationMethod>DDBT</compensationMethod><debitAccount>EXAM00000001</debitAccount><delayedDebitDate>2026-11-15</delayedDebitDate><settlementAdvice>false</settlementAdvice><accountBalanceCurrencyCode>GBP</accountBalanceCurrencyCode><settlementCurrencyCode>GBP</settlementCurrencyCode><taxRegionCode>GB</taxRegionCode><taxRegionResident>true</taxRegionResident></account>
+      <currencyTranslation><originalCurrency>USD</originalCurrency><targetCurrency>GBP</targetCurrency><translationValue>0.7900</translationValue><basis>MNTH</basis></currencyTranslation>
+      <balance><balanceIdentifier>AVGLEDGER</balanceIdentifier><balanceValue><amount>250000.00</amount><currency>GBP</currency></balanceValue></balance>
+      <balance><balanceIdentifier>AVGCOLLECTED</balanceIdentifier><balanceValue><amount>245000.00</amount><currency>GBP</currency></balanceValue></balance>
+      <compensation><compensationIdentifier>ECR</compensationIdentifier><compensationValue><amount>0.0125</amount><currency>GBP</currency></compensationValue></compensation>
+      <compensation><compensationIdentifier>EARNINGS</compensationIdentifier><compensationValue><amount>260.42</amount><currency>GBP</currency></compensationValue></compensation>
+      <service><bankServiceID>PAY-DOM-OUT</bankServiceID><subServiceCode>001</subServiceCode><commonCode>PAY</commonCode><serviceDescription>Domestic payment, outbound</serviceDescription><serviceType>ACCOUNT</serviceType><volume>412</volume><pricingCurrencyCode>GBP</pricingCurrencyCode><unitPrice><amount>0.35</amount><currency>GBP</currency></unitPrice><priceMethod>UPRC</priceMethod><paymentMethod>FLAT</paymentMethod><originalChargePrice><amount>144.20</amount><currency>GBP</currency></originalChargePrice><originalChargeSettlement><amount>144.20</amount><currency>GBP</currency></originalChargeSettlement><taxDesignation>TAXD</taxDesignation><serviceTaxRegion>GB</serviceTaxRegion><taxIdentificationGroup><taxIdentifierNumber>1</taxIdentifierNumber><taxIdentifierRate>20.00</taxIdentifierRate></taxIdentificationGroup></service>
+      <service><bankServiceID>PAY-INT-OUT</bankServiceID><subServiceCode>002</subServiceCode><commonCode>PAY</commonCode><serviceDescription>International payment, outbound</serviceDescription><serviceType>ACCOUNT</serviceType><volume>96</volume><pricingCurrencyCode>GBP</pricingCurrencyCode><unitPrice><amount>11.50</amount><currency>GBP</currency></unitPrice><priceMethod>UPRC</priceMethod><paymentMethod>FLAT</paymentMethod><originalChargePrice><amount>1104.00</amount><currency>GBP</currency></originalChargePrice><originalChargeSettlement><amount>1104.00</amount><currency>GBP</currency></originalChargeSettlement><taxDesignation>TAXD</taxDesignation><serviceTaxRegion>GB</serviceTaxRegion><taxIdentificationGroup><taxIdentifierNumber>1</taxIdentifierNumber><taxIdentifierRate>20.00</taxIdentifierRate></taxIdentificationGroup></service>
+      <service><bankServiceID>ACC-MAINT</bankServiceID><subServiceCode>003</subServiceCode><commonCode>ACC</commonCode><serviceDescription>Account maintenance, monthly</serviceDescription><serviceType>ACCOUNT</serviceType><volume>1</volume><pricingCurrencyCode>GBP</pricingCurrencyCode><unitPrice><amount>45.00</amount><currency>GBP</currency></unitPrice><priceMethod>FCHG</priceMethod><paymentMethod>FLAT</paymentMethod><originalChargePrice><amount>45.00</amount><currency>GBP</currency></originalChargePrice><originalChargeSettlement><amount>45.00</amount><currency>GBP</currency></originalChargeSettlement><taxDesignation>TAXD</taxDesignation><serviceTaxRegion>GB</serviceTaxRegion><taxIdentificationGroup><taxIdentifierNumber>1</taxIdentifierNumber><taxIdentifierRate>20.00</taxIdentifierRate></taxIdentificationGroup></service>
+      <service><bankServiceID>REB-VOL</bankServiceID><subServiceCode>004</subServiceCode><commonCode>REB</commonCode><serviceDescription>Volume rebate</serviceDescription><serviceType>ACCOUNT</serviceType><volume>1</volume><pricingCurrencyCode>GBP</pricingCurrencyCode><unitPrice><amount>60.00</amount><currency>GBP</currency></unitPrice><priceMethod>FCHG</priceMethod><paymentMethod>FLAT</paymentMethod><originalChargePrice><amount>-60.00</amount><currency>GBP</currency></originalChargePrice><originalChargeSettlement><amount>-60.00</amount><currency>GBP</currency></originalChargeSettlement><taxDesignation>TAXD</taxDesignation><serviceTaxRegion>GB</serviceTaxRegion><taxIdentificationGroup><taxIdentifierNumber>1</taxIdentifierNumber><taxIdentifierRate>20.00</taxIdentifierRate></taxIdentificationGroup></service>
+    </statement>
+  </electronicStatement>
+</Twist>`}
+];
+
+/* ---------- reading and parsing ---------- */
+async function readFile(file){
+  const buf=await file.arrayBuffer();
+  const head=new TextDecoder('ascii').decode(buf.slice(0,200));
+  const m=/encoding\s*=\s*["']([\w-]+)["']/i.exec(head);
+  let text;
+  try{text=new TextDecoder(m?m[1]:'utf-8').decode(buf);}catch(e){text=new TextDecoder('utf-8').decode(buf);}
+  return text.replace(/^\uFEFF/,'');
+}
+function detect(root){
+  const ns=root.namespaceURI||'';
+  const m=/camt\.(\d{3})\.(\d{3})\.(\d{2})/i.exec(ns);
+  if(m) return {kind:'camt',tag:'camt.'+m[1]+'.'+m[2]+'.'+m[3],label:m[1]==='086'?'ISO 20022 camt.086 bank services billing':'ISO 20022 camt.'+m[1]};
+  if(/twist/i.test(ns)||/twist/i.test(root.localName)||/bank.?serv|bsb|billing/i.test(root.localName)) return {kind:'twist',tag:'TWIST',label:'TWIST bank service billing'};
+  return {kind:'xml',tag:'XML',label:'Generic XML'};
+}
+function analyse(root){
+  const stats=new Map();
+  (function walk(el,path,depth){
+    const kids=el.children;
+    let s=stats.get(path);
+    if(!s){s={path,name:el.localName,depth,count:0,isLeaf:true,sample:'',children:new Set(),ccy:false,amtLeaf:false};stats.set(path,s);}
+    s.count++;
+    if(kids.length){s.isLeaf=false;}
+    else{
+      if(!s.sample) s.sample=el.textContent.trim().slice(0,60);
+      for(const a of el.attributes) if(CCY_RE.test(a.localName)) s.ccy=true;
+      if((AMT_RE.test(el.localName)&&!NOT_AMT_RE.test(el.localName))||s.ccy) s.amtLeaf=true;
+    }
+    for(const k of kids){const p=path+'/'+k.localName;s.children.add(p);walk(k,p,depth+1);}
+  })(root,root.localName,0);
+  // bottom-up: leaf counts and amount presence
+  const memo=new Map();
+  const info=p=>{
+    if(memo.has(p)) return memo.get(p);
+    const s=stats.get(p);let r;
+    if(s.isLeaf) r={leaves:1,amt:s.amtLeaf};
+    else{r={leaves:0,amt:false};for(const c of s.children){const x=info(c);r.leaves+=x.leaves;r.amt=r.amt||x.amt;}}
+    memo.set(p,r);return r;
+  };
+  for(const s of stats.values()){const r=info(s.path);s.leafCount=r.leaves;s.amt=r.amt;}
+  return stats;
+}
+function ingest(name,size,text,example){
+  const f={id:++uid,name,size,example:!!example,error:null};
+  try{
+    const doc=new DOMParser().parseFromString(text,'application/xml');
+    const pe=doc.getElementsByTagName('parsererror')[0];
+    if(pe){
+      const lines=pe.textContent.split('\n').map(x=>x.trim()).filter(Boolean);
+      throw new Error((lines.find(l=>/error on line|line \d+/i.test(l))||lines[0]||'Not valid XML').slice(0,200));
+    }
+    f.root=doc.documentElement;f.fmt=detect(f.root);f.stats=analyse(f.root);
+  }catch(e){f.error=e.message||String(e);}
+  S.files.push(f);S.sel=f.id;
+  return f;
+}
+
+/* ---------- flattening ---------- */
+function attrsInto(row,key,el){
+  for(const a of el.attributes){
+    if(a.name==='xmlns'||a.name.startsWith('xmlns:')) continue;
+    row[key+'@'+a.localName]=a.value;
+  }
+}
+function collect(el,prefix,row,skip,path){
+  const kids=el.children;if(!kids.length) return;
+  const counts={};for(const k of kids) counts[k.localName]=(counts[k.localName]||0)+1;
+  const seen={};
+  for(const k of kids){
+    const nm=k.localName,cp=path+'/'+nm;
+    if(skip&&skip(k,cp,counts[nm])) continue;
+    let seg=nm;
+    if(counts[nm]>1){seen[nm]=(seen[nm]||0)+1;seg=nm+'['+seen[nm]+']';}
+    const key=prefix+seg;
+    if(k.children.length){attrsInto(row,key,k);collect(k,key+'/',row,skip,cp);}
+    else{row[key]=k.textContent.trim();attrsInto(row,key,k);}
+  }
+}
+function pickRow(stats,name){
+  const all=[...stats.values()];
+  if(name!=='auto'){
+    const m=all.filter(s=>!s.isLeaf&&s.name===name).sort((a,b)=>b.count-a.count||a.depth-b.depth);
+    if(m.length) return m[0];
+  }
+  let pool=all.filter(s=>!s.isLeaf&&s.amt&&s.depth>0);
+  const svc=pool.filter(s=>SERVICE_ROWS.test(s.name));
+  if(svc.length) return svc.sort((a,b)=>a.depth-b.depth||b.count-a.count)[0];
+  if(!pool.length) pool=all.filter(s=>!s.isLeaf&&s.count>1);
+  if(!pool.length) return all[0];
+  const max=Math.max(...pool.map(s=>s.count));
+  if(max===1){
+    const ok=pool.filter(s=>s.leafCount>=2);
+    return (ok.length?ok:pool).sort((a,b)=>b.depth-a.depth)[0];
+  }
+  return pool.filter(s=>s.count>=max/2).sort((a,b)=>a.depth-b.depth||b.leafCount-a.leafCount||b.count-a.count)[0];
+}
+function findAll(root,parts){
+  let cur=[root];
+  for(let i=1;i<parts.length;i++){
+    const nx=[];
+    for(const e of cur) for(const k of e.children) if(k.localName===parts[i]) nx.push(k);
+    cur=nx;
+  }
+  return cur;
+}
+function ccyFor(key,colSet){
+  const base=key.replace(/~.*$/,'');
+  for(const c of colSet) if(c.startsWith(base+'@')&&CCY_RE.test(c.slice(base.length+1))) return c;
+  const p=base.split('/').slice(0,-1);
+  for(let i=p.length;i>=0;i--){
+    const pre=p.slice(0,i).join('/');
+    let best=null;
+    for(const c of colSet){
+      if(c.includes('@')||c===base) continue;
+      const j=c.lastIndexOf('/');
+      if(j<0||c.slice(0,j)!==pre) continue;
+      if(!CCY_NAME_RE.test(c.slice(j+1))) continue;
+      if(best===null||c.length<best.length) best=c;
+    }
+    if(best) return best;
+  }
+  return null;
+}
+function hasOwnCcy(key,colSet){
+  for(const c of colSet) if(c.startsWith(key+'@')&&CCY_RE.test(c.slice(key.length+1))) return true;
+  return false;
+}
+function decimals(v){const i=v.indexOf('.');return i<0?0:v.length-i-1;}
+
+function build(){
+  const rows=[],warn=[],rowBases=[];
+  // options for the "one row per" selector
+  const names=new Map();
+  for(const f of S.files){
+    if(f.error) continue;
+    for(const s of f.stats.values()) if(!s.isLeaf&&s.depth>0&&(s.count>1||s.amt)) names.set(s.name,(names.get(s.name)||0)+s.count);
+  }
+  let opts=[...names];
+  const multi=opts.filter(o=>o[1]>1);
+  S.rowOptions=(multi.length?multi:opts).sort((a,b)=>b[1]-a[1]).slice(0,12);
+  if(S.rowName!=='auto'&&!names.has(S.rowName)) S.rowName='auto';
+
+  for(const f of S.files){
+    if(f.error){warn.push(f.name+': '+f.error);continue;}
+    const st=pickRow(f.stats,S.rowName);
+    f.rowStat=st;
+    const parts=st.path.split('/');
+    const els=findAll(f.root,parts);
+    const chain=new Set();
+    for(let i=1;i<=parts.length;i++) chain.add(parts.slice(0,i).join('/'));
+    const cache=new Map();
+    const base=parts.join('/');
+    rowBases.push(base);
+    f.rowCount=els.length;
+    if(!els.length) warn.push(f.name+': no records found.');
+    for(const el of els){
+      const row={};
+      if(S.src) row['#file']=f.name;
+      if(S.ctx){
+        const anc=[];
+        for(let p=el.parentElement;p;p=p.parentElement) anc.unshift(p);
+        for(let i=0;i<anc.length;i++){
+          const A=anc[i];let c=cache.get(A);
+          if(!c){
+            c={};const ap=parts.slice(0,i+1).join('/');
+            attrsInto(c,ap,A);
+            collect(A,ap+'/',c,(k,cp,n)=>chain.has(cp)||(k.children.length>0&&n>1)||(!S.addr&&ADDRESS_NAMES.has(k.localName)),ap);
+            cache.set(A,c);
+          }
+          for(const k in c) row[k]=c[k];
+        }
+      }
+      attrsInto(row,base,el);
+      collect(el,base+'/',row,(k)=>!S.addr&&ADDRESS_NAMES.has(k.localName),base);
+      rows.push(row);
+    }
+    if(st.depth===0&&st.count===1) warn.push(f.name+': no repeating records found, so the whole file is one row. Pick an element under "One CSV row per".');
+  }
+
+  normaliseIndexes(rows);
+  let cols=[];const colSet=new Set();
+  for(const r of rows) for(const k in r) if(!colSet.has(k)){colSet.add(k);cols.push(k);}
+
+  const numeric=new Set(),amount=new Set();
+  for(const k of cols){
+    if(k==='#file') continue;
+    let any=false,ok=true;
+    for(const r of rows){const v=r[k];if(v===undefined||v==='') continue;any=true;if(!NUM_RE.test(v)){ok=false;break;}}
+    if(any&&ok){
+      numeric.add(k);
+      const last=k.split('/').pop();
+      if((AMT_RE.test(last)&&!NOT_AMT_RE.test(last))||hasOwnCcy(k,colSet)) amount.add(k);
+    }
+  }
+  if(S.signed){
+    const out=[];
+    for(const k of cols){
+      out.push(k);
+      if(!amount.has(k)) continue;
+      const parent=k.slice(0,k.lastIndexOf('/'));
+      let ik=null,neg='';
+      for(const [n,val] of SIGN_FIELDS) if(colSet.has(parent+'/'+n)){ik=parent+'/'+n;neg=val;break;}
+      if(!ik) continue;
+      const sk=k+'~signed';
+      for(const r of rows){
+        const v=r[k],ind=r[ik];
+        if(v===undefined||v===''||!ind) continue;
+        const s=v.replace(/^[+-]/,'');
+        r[sk]=(ind.toLowerCase()===neg.toLowerCase())?'-'+s:s;
+      }
+      colSet.add(sk);out.push(sk);numeric.add(sk);amount.add(sk);
+    }
+    cols=out;
+  }
+
+  // totals per amount column and currency (sign flags applied)
+  const totals=new Map();
+  for(const k of amount){
+    if(k.includes('~')) continue;
+    if(/unit|rate/i.test(k.split('/').slice(-2).join('/'))) continue;
+    if(!rowBases.some(b=>k.startsWith(b+'/'))) continue;
+    const par=k.slice(0,k.lastIndexOf('/'));
+    let fk=null,fneg='';
+    for(const [n,val] of SIGN_FIELDS) if(colSet.has(par+'/'+n)){fk=par+'/'+n;fneg=val;break;}
+    const ck=ccyFor(k,colSet);const m=new Map();
+    for(const r of rows){
+      const v=r[k];if(v===undefined||v==='') continue;
+      const c=(ck&&r[ck])||'n/a';
+      let t=m.get(c);if(!t){t={sum:0,n:0,d:0};m.set(c,t);}
+      let x=Number(v);
+      if(fk&&String(r[fk]||'').toLowerCase()===fneg.toLowerCase()) x=-x;
+      t.sum+=x;t.n++;t.d=Math.max(t.d,decimals(v));
+    }
+    for(const t of m.values()){const d=Math.min(t.d,6);t.sum=Math.round(t.sum*10**d)/10**d;}
+    totals.set(k,m);
+  }
+
+  Object.assign(S,{rows,cols,numeric,amount,totals,warn});
+  S.labels=makeLabels(cols);
+  S.hidden=new Set([...S.hidden].filter(k=>colSet.has(k)));
+  S.page=0;
+  if(S.sort&&!colSet.has(S.sort.key)) S.sort=null;
+  refresh();
+}
+function normaliseIndexes(rows){
+  const pre=new Set();
+  for(const r of rows){
+    for(const k in r){
+      const re=/\[1\]/g;let m;
+      while((m=re.exec(k))) pre.add(k.slice(0,m.index));
+    }
+  }
+  if(!pre.size) return;
+  const list=[...pre].sort((a,b)=>a.length-b.length);
+  rows.forEach((r,ri)=>{
+    const out={};let changed=false;
+    for(const k in r){
+      let nk=k;
+      for(const p of list){
+        if(nk===p||nk.startsWith(p+'/')||nk.startsWith(p+'@')){nk=p+'[1]'+nk.slice(p.length);changed=true;break;}
+      }
+      out[nk]=r[k];
+    }
+    if(changed) rows[ri]=out;
+  });
+}
+function makeLabels(cols){
+  const m=new Map();
+  const segs=k=>k.split('/').map(s=>s.replace(/[@~]/g,'_'));
+  const used=new Set();
+  const labelFor=(k)=>{
+    if(k==='#file') return 'Source_file';
+    if(k.includes('~')){const i=k.indexOf('~');return labelFor(k.slice(0,i))+'_'+k.slice(i+1);}
+    const sg=segs(k);
+    if(S.naming==='full') return sg.join('.');
+    const generic=/^(Id|Cd|Nm|Tp|Othr|Prtry|Ref|Dt)(_.*)?$/.test(sg[sg.length-1]);
+    for(let n=generic?2:1;n<=sg.length;n++){
+      const cand=sg.slice(-n).join('.');
+      const clash=cols.some(o=>o!==k&&o!=='#file'&&segs(o).slice(-n).join('.')===cand);
+      if(!clash) return cand;
+    }
+    return sg.join('.');
+  };
+  for(const k of cols){
+    let l=labelFor(k),b=l,i=2;
+    while(used.has(l)) l=b+'_'+(i++);
+    used.add(l);m.set(k,l);
+  }
+  return m;
+}
+
+/* ---------- filtering and sorting ---------- */
+const textCache=new WeakMap();
+function rowText(r){let t=textCache.get(r);if(t===undefined){t=Object.values(r).join('\u0001').toLowerCase();textCache.set(r,t);}return t;}
+function refresh(){
+  let r=S.rows;const q=S.search.trim().toLowerCase();
+  if(q) r=r.filter(x=>rowText(x).includes(q));
+  if(S.sort){
+    const {key,dir}=S.sort,num=S.numeric.has(key);
+    r=[...r].sort((a,b)=>{
+      const x=a[key]===undefined?'':a[key],y=b[key]===undefined?'':b[key];
+      if(num){
+        const dx=x===''?-Infinity:+x,dy=y===''?-Infinity:+y;
+        return (dx<dy?-1:dx>dy?1:0)*dir;
+      }
+      return x.localeCompare(y,undefined,{numeric:true})*dir;
+    });
+  }
+  S.view=r;
+}
+
+/* ---------- CSV ---------- */
+function makeCsv(limit){
+  const o=S.csv,vis=S.cols.filter(c=>!S.hidden.has(c));
+  const q=v=>{
+    v=v==null?'':String(v);
+    const need=o.quote==='all'||v.includes(o.delim)||/["\r\n]/.test(v)||/^\s|\s$/.test(v);
+    return need?'"'+v.replace(/"/g,'""')+'"':v;
+  };
+  const lines=[];
+  if(o.header) lines.push(vis.map(c=>q(S.labels.get(c))).join(o.delim));
+  const n=limit?Math.min(limit,S.view.length):S.view.length;
+  for(let i=0;i<n;i++){
+    const r=S.view[i];
+    lines.push(vis.map(c=>{
+      let v=r[c];if(v===undefined) v='';
+      if(o.decimal!=='.'&&v!==''&&S.amount.has(c)) v=v.replace('.',o.decimal);
+      return q(v);
+    }).join(o.delim));
+  }
+  return lines.length?lines.join(o.eol)+o.eol:'';
+}
+function makeJson(limit){
+  const vis=S.cols.filter(c=>!S.hidden.has(c));
+  const n=limit?Math.min(limit,S.view.length):S.view.length;
+  const out=[];
+  for(let i=0;i<n;i++){
+    const r=S.view[i],o={};
+    for(const c of vis){
+      let v=r[c];
+      if(v===undefined||v==='') v=null;
+      else if(S.js.num&&S.amount.has(c)) v=Number(v);
+      o[S.labels.get(c)]=v;
+    }
+    out.push(o);
+  }
+  return JSON.stringify(out,null,S.js.pretty?2:0)+'\n';
+}
+function makeOut(limit){return S.fmt==='json'?makeJson(limit):makeCsv(limit);}
+const fmtName=()=>S.fmt==='json'?'JSON':'CSV';
+function csvName(){
+  const ok=S.files.filter(f=>!f.error);
+  if(ok.length===1) return ok[0].name.replace(/\.[^.]+$/,'')+(S.fmt==='json'?'.json':'.csv');
+  return 'parsed-statements'+(S.fmt==='json'?'.json':'.csv');
+}
+let toastT;
+function toast(msg,bad){
+  const t=$('#toast');t.textContent=msg;t.style.color=bad?'var(--warn)':'var(--ok)';
+  clearTimeout(toastT);toastT=setTimeout(()=>{t.textContent='';},4000);
+}
+async function copyCsv(){
+  const csv=makeOut();
+  try{await navigator.clipboard.writeText(csv);toast('Copied '+nf(S.view.length)+' rows');return;}catch(e){}
+  try{
+    const ta=document.createElement('textarea');ta.value=csv;ta.style.position='fixed';ta.style.opacity='0';
+    document.body.appendChild(ta);ta.select();const ok=document.execCommand('copy');ta.remove();
+    if(ok){toast('Copied '+nf(S.view.length)+' rows');return;}
+  }catch(e){}
+  toast('Copy was blocked. Open the CSV tab and select the text.',true);
+}
+async function saveCsv(){
+  const csv=(S.fmt==='csv'&&S.csv.bom?'\uFEFF':'')+makeOut(),name=csvName();
+  let dl=S.dl;
+  const inHost=typeof window.claude!=='undefined'&&window.claude&&typeof window.claude.use==='function';
+  if(!dl&&inHost){try{dl=await window.claude.use('downloads');}catch(e){}}
+  if(dl){
+    try{await dl.save({filename:name,data:csv});toast('Saved '+name);}
+    catch(e){toast(e&&e.code==='declined'?'Download cancelled':'Download is not available here. Use Copy CSV.',true);}
+    return;
+  }
+  if(inHost){toast('Download is not available here. Use Copy CSV.',true);return;}
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(new Blob([csv],{type:S.fmt==='json'?'application/json;charset=utf-8':'text/csv;charset=utf-8'}));
+  a.download=name;document.body.appendChild(a);a.click();a.remove();
+  setTimeout(()=>URL.revokeObjectURL(a.href),1500);
+  toast('Saved '+name);
+}
+
+/* ---------- rendering ---------- */
+function fmtTotals(m){
+  return [...m].map(([c,t])=>c+' '+t.sum.toLocaleString('en-GB',{minimumFractionDigits:t.d,maximumFractionDigits:t.d})).join(' \u00b7 ');
+}
+function renderTiles(){
+  const ok=S.files.filter(f=>!f.error);
+  const tags=[...new Set(ok.map(f=>f.fmt.tag))].join(', ')||'none';
+  const tk=[...S.amount].find(k=>S.totals.has(k)&&!k.includes('~'));
+  const tm=tk?S.totals.get(tk):null;
+  $('#tiles').innerHTML=
+    `<div class="tile"><div class="k">Files</div><div class="v">${ok.length}</div><div class="k">${esc(tags)}</div></div>`+
+    `<div class="tile"><div class="k">Rows</div><div class="v">${nf(S.rows.length)}</div><div class="k">${S.view.length!==S.rows.length?nf(S.view.length)+' after filter':'in the CSV'}</div></div>`+
+    `<div class="tile"><div class="k">Columns</div><div class="v">${S.cols.length-S.hidden.size}</div><div class="k">${S.hidden.size?S.hidden.size+' hidden':'all shown'}</div></div>`+
+    `<div class="tile"><div class="k">${tk?esc(S.labels.get(tk))+' total':'Amount total'}</div><div class="v sm">${tm&&tm.size?esc(fmtTotals(tm)):'No amount columns found'}</div></div>`;
+}
+function renderSide(){
+  const ul=$('#files');
+  ul.innerHTML=S.files.map(f=>`<li class="file${f.id===S.sel?' sel':''}" data-act="selfile" data-id="${f.id}">
+    <span class="nm">${esc(f.name)}</span><button class="x" data-act="rmfile" data-id="${f.id}" aria-label="Remove ${esc(f.name)}" title="Remove">&times;</button>
+    <span class="meta">${f.error?'':`<span class="chip on">${esc(f.fmt.tag)}</span>`}${f.example?'<span class="chip ex">example</span>':''} ${f.error?'':nf(f.rowCount||0)+' rows'}</span>
+    ${f.error?`<span class="err">${esc(f.error)}</span>`:''}</li>`).join('')||'<li class="hint">No files yet.</li>';
+  const sel=$('#rowSel');
+  sel.innerHTML='<option value="auto">Auto-detect</option>'+S.rowOptions.map(([n,c])=>`<option value="${esc(n)}">${esc(n)} (${nf(c)})</option>`).join('');
+  sel.value=S.rowName;
+  const ok=S.files.filter(f=>!f.error&&f.rowStat);
+  const tags=new Set(ok.map(f=>f.fmt.tag.replace(/\.\d+\.\d+$/,'')));
+  $('#rowHint').textContent=ok.length?(S.rowName==='auto'?'Auto picked: ':'Using: ')+[...new Set(ok.map(f=>f.rowStat.name))].join(', ')+'.'+(tags.size>1?' These files use different layouts, so the CSV holds the columns of both. Remove one file for a tidier export.':''):'';
+  $('#copy').disabled=$('#download').disabled=!S.rows.length;
+  $('#copy').textContent='Copy '+fmtName();$('#download').textContent='Download '+fmtName();
+}
+function renderTabs(){
+  document.querySelectorAll('.tab').forEach(t=>t.setAttribute('aria-selected',String(t.dataset.tab===S.tab)));
+}
+function emptyHtml(){
+  return `<div class="empty"><strong>No rows to show</strong>Drop a camt.086 or TWIST XML file on the left, or load the examples to see how the output looks.<p><button class="btn pri" data-act="examples" type="button">Load examples</button></p></div>`;
+}
+function renderView(){
+  renderTabs();
+  const v=$('#view');
+  if(!S.files.length){v.innerHTML=emptyHtml();return;}
+  if(S.tab==='table') viewTable(v);
+  else if(S.tab==='summary') viewSummary(v);
+  else if(S.tab==='structure') viewStructure(v);
+  else viewCsv(v);
+}
+function viewTable(v){
+  if(!S.rows.length){v.innerHTML='<div class="empty"><strong>No rows</strong>The files loaded but no records were found. Check the Summary tab for details.</div>';return;}
+  v.innerHTML=`<div class="toolbar">
+    <input class="q" id="q" type="search" placeholder="Filter rows" aria-label="Filter rows" value="${esc(S.search)}">
+    <details class="cols" id="colsMenu"><summary>Columns</summary><div class="menu" id="colsList"></div></details>
+    <span class="count" id="count"></span>
+    <div class="pager"><button class="btn" data-act="prev" type="button" aria-label="Previous page">Prev</button>
+    <button class="btn" data-act="next" type="button" aria-label="Next page">Next</button>
+    <select id="size" aria-label="Rows per page">${[50,100,250,500].map(n=>`<option value="${n}"${n===S.size?' selected':''}>${n} per page</option>`).join('')}</select></div>
+  </div><div class="tablewrap" id="tablearea"></div>`;
+  fillCols();fillTable();
+}
+function fillCols(){
+  const m=$('#colsList');if(!m) return;
+  m.innerHTML=`<div class="btnrow"><button class="btn" data-act="showall" type="button">Show all</button><button class="btn" data-act="hideall" type="button">Hide all</button></div>`+
+    S.cols.map((c,i)=>`<label class="chk"><input type="checkbox" data-act="togglecol" data-i="${i}"${S.hidden.has(c)?'':' checked'}><span>${esc(S.labels.get(c))}</span></label>`).join('');
+}
+function fillTable(){
+  const area=$('#tablearea');if(!area) return;
+  const vis=S.cols.map((c,i)=>[c,i]).filter(([c])=>!S.hidden.has(c));
+  const total=S.view.length,pages=Math.max(1,Math.ceil(total/S.size));
+  if(S.page>=pages) S.page=pages-1;
+  const a=S.page*S.size,slice=S.view.slice(a,a+S.size);
+  let h='<table><thead><tr><th class="idx">#</th>';
+  for(const [c,i] of vis){
+    const on=S.sort&&S.sort.key===c;
+    h+=`<th class="${S.amount.has(c)?'num':''}" aria-sort="${on?(S.sort.dir>0?'ascending':'descending'):'none'}"><button data-act="sort" data-i="${i}" title="${esc(c)}">${esc(S.labels.get(c))}<span class="arr">${on?(S.sort.dir>0?'&#9650;':'&#9660;'):''}</span></button></th>`;
+  }
+  h+='</tr></thead><tbody>';
+  slice.forEach((r,n)=>{
+    h+=`<tr><td class="idx">${a+n+1}</td>`;
+    for(const [c] of vis){const v=r[c]===undefined?'':r[c];h+=`<td class="${S.amount.has(c)?'num':''}" title="${esc(v)}">${esc(v)}</td>`;}
+    h+='</tr>';
+  });
+  area.innerHTML=h+'</tbody></table>'+(total?'':'<div class="empty">No rows match the filter.</div>');
+  const cnt=$('#count');
+  if(cnt) cnt.textContent=total?`Rows ${nf(a+1)} to ${nf(a+slice.length)} of ${nf(total)}`+(total!==S.rows.length?` (filtered from ${nf(S.rows.length)})`:''):'0 rows';
+  renderTiles();
+}
+function viewSummary(v){
+  let h='<div class="pad">';
+  h+='<h3>Totals by amount column and currency</h3><p class="hint">Where a sign flag (Sgn or CdtDbtInd) sits next to an amount, it is applied.</p>';
+  if(S.totals.size){
+    h+='<div class="mini"><table><thead><tr><th>Column</th><th>Currency</th><th class="num" style="text-align:right">Rows</th><th class="num" style="text-align:right">Total</th></tr></thead><tbody>';
+    for(const [k,m] of S.totals) for(const [c,t] of m){
+      h+=`<tr><td>${esc(S.labels.get(k))}</td><td>${esc(c)}</td><td class="num">${nf(t.n)}</td><td class="num">${t.sum.toLocaleString('en-GB',{minimumFractionDigits:t.d,maximumFractionDigits:t.d})}</td></tr>`;
+    }
+    h+='</tbody></table></div>';
+  }else h+='<p class="hint">No numeric amount columns were found.</p>';
+  h+='<h3>Files</h3><div class="mini"><table><thead><tr><th>File</th><th>Format</th><th>Row element</th><th style="text-align:right">Rows</th></tr></thead><tbody>';
+  for(const f of S.files){
+    h+=`<tr><td>${esc(f.name)}</td><td>${f.error?'<span class="chip">error</span>':esc(f.fmt.label)+' <span class="chip">'+esc(f.fmt.tag)+'</span>'}</td><td>${f.rowStat?esc(f.rowStat.path.split('/').slice(-3).join(' / ')):''}</td><td class="num">${f.error?'':nf(f.rowCount||0)}</td></tr>`;
+  }
+  h+='</tbody></table></div>';
+  if(S.warn.length) h+='<h3>Warnings</h3>'+S.warn.map(w=>`<p class="warn">${esc(w)}</p>`).join('');
+  v.innerHTML=h+'</div>';
+}
+function treeHtml(f){
+  const st=f.stats;
+  const node=p=>{
+    const s=st.get(p);
+    const chips=(s.count>1?`<span class="chip">&times;${nf(s.count)}</span>`:'')+(f.rowStat&&f.rowStat.path===p?'<span class="chip on">rows</span>':'');
+    if(s.isLeaf) return `<li class="leaf"><span class="nm">${esc(s.name)}</span>${chips}<span class="smp">${esc(s.sample)}</span></li>`;
+    const use=(s.depth>0&&s.count>1)?`<button class="link" data-act="userows" data-name="${esc(s.name)}" type="button">use as rows</button>`:'';
+    return `<li><details${s.depth<4?' open':''}><summary><span class="nm">${esc(s.name)}</span>${chips}${use}</summary><ul>${[...s.children].map(node).join('')}</ul></details></li>`;
+  };
+  return `<ul class="tree">${node(f.root.localName)}</ul>`;
+}
+function viewStructure(v){
+  const f=S.files.find(x=>x.id===S.sel&&!x.error)||S.files.find(x=>!x.error);
+  if(!f){v.innerHTML='<div class="empty"><strong>No readable file</strong>Select a file that parsed without errors.</div>';return;}
+  v.innerHTML=`<div class="pad"><h3>${esc(f.name)} <span class="chip on">${esc(f.fmt.tag)}</span></h3><p class="hint">Elements that repeat show a count. Pick the one that should become one CSV row.</p>${treeHtml(f)}</div>`;
+}
+function viewCsv(v){
+  const o=S.csv,j=S.js;
+  const sel=(id,label,opts,val)=>`<div class="field"><label for="${id}">${label}</label><select id="${id}">${opts.map(([a,b])=>`<option value="${esc(a)}"${a===val?' selected':''}>${esc(b)}</option>`).join('')}</select></div>`;
+  const csvOpts=`<div class="grid2">
+      ${sel('oDelim','Delimiter',[[',','Comma'],[';','Semicolon'],['\t','Tab'],['|','Pipe']],o.delim)}
+      ${sel('oQuote','Quoting',[['min','Only when needed'],['all','Every field']],o.quote)}
+      ${sel('oEol','Line endings',[['\r\n','Windows (CRLF)'],['\n','Unix (LF)']],o.eol)}
+      ${sel('oDec','Decimal mark in amounts',[['.','Point (1234.50)'],[',','Comma (1234,50)']],o.decimal)}
+    </div>
+    <label class="chk"><input type="checkbox" id="oHead"${o.header?' checked':''}><span>Include header row</span></label>
+    <label class="chk"><input type="checkbox" id="oBom"${o.bom?' checked':''}><span>Add a UTF-8 byte order mark (helps Excel show non-English characters; some import tools reject it)</span></label>`;
+  const jsonOpts=`<label class="chk"><input type="checkbox" id="jNum"${j.num?' checked':''}><span>Write amounts as numbers (otherwise as text, keeping trailing zeros)</span></label>
+    <label class="chk"><input type="checkbox" id="jPretty"${j.pretty?' checked':''}><span>Indent for readability</span></label>
+    <p class="hint">Empty fields are written as null. Each row becomes one object in a JSON array.</p>`;
+  v.innerHTML=`<div class="pad">
+    <div class="field"><span class="lbl">Format</span>
+      <div class="seg" role="radiogroup" aria-label="Output format">
+        <label><input type="radio" name="outfmt" value="csv"${S.fmt==='csv'?' checked':''}><span>CSV</span></label>
+        <label><input type="radio" name="outfmt" value="json"${S.fmt==='json'?' checked':''}><span>JSON</span></label>
+      </div></div>
+    ${S.fmt==='csv'?csvOpts:jsonOpts}
+    <h3>Preview</h3>
+    <p class="hint" id="csvNote"></p>
+    <pre class="csv" id="csvPre" tabindex="0" aria-label="Output preview"></pre>
+  </div>`;
+  fillCsv();
+}
+function fillCsv(){
+  const pre=$('#csvPre');if(!pre) return;
+  const lim=S.fmt==='json'?5:40;
+  const txt=makeOut(lim);
+  pre.textContent=txt||'Nothing to export yet.';
+  const vis=S.cols.length-S.hidden.size;
+  $('#csvNote').textContent=`Exports ${nf(S.view.length)} of ${nf(S.rows.length)} rows and ${vis} of ${S.cols.length} columns, using the current filter, sort and column choices. Showing the first ${lim}${S.fmt==='json'?' records':' lines'}.`;
+}
+function renderAll(){renderSide();renderTiles();renderView();}
+
+/* ---------- events ---------- */
+async function addFiles(list){
+  for(const file of list){
+    try{ingest(file.name,file.size,await readFile(file));}
+    catch(e){const f={id:++uid,name:file.name,size:file.size,error:'Could not read this file.'};S.files.push(f);}
+  }
+  build();renderAll();
+}
+function loadExamples(){
+  for(const e of EXAMPLES) ingest(e.name,e.text.length,e.text,true);
+  build();renderAll();
+}
+document.addEventListener('click',e=>{
+  const t=e.target.closest('[data-act],.tab');if(!t) return;
+  if(t.classList.contains('tab')){S.tab=t.dataset.tab;renderView();return;}
+  const act=t.dataset.act;
+  if(act==='selfile'){if(e.target.closest('[data-act="rmfile"]')) return;S.sel=+t.dataset.id;renderSide();if(S.tab==='structure')renderView();}
+  else if(act==='rmfile'){S.files=S.files.filter(f=>f.id!==+t.dataset.id);if(!S.files.find(f=>f.id===S.sel))S.sel=S.files.length?S.files[0].id:null;build();renderAll();}
+  else if(act==='examples') loadExamples();
+  else if(act==='sort'){
+    const k=S.cols[+t.dataset.i];
+    if(!S.sort||S.sort.key!==k) S.sort={key:k,dir:1};
+    else if(S.sort.dir===1) S.sort={key:k,dir:-1};
+    else S.sort=null;
+    refresh();fillTable();
+  }
+  else if(act==='prev'){if(S.page>0){S.page--;fillTable();}}
+  else if(act==='next'){if((S.page+1)*S.size<S.view.length){S.page++;fillTable();}}
+  else if(act==='showall'){S.hidden.clear();fillCols();fillTable();}
+  else if(act==='hideall'){S.hidden=new Set(S.cols);fillCols();fillTable();}
+  else if(act==='userows'){e.preventDefault();S.rowName=t.dataset.name;build();renderAll();}
+});
+document.addEventListener('change',e=>{
+  const t=e.target,id=t.id;
+  if(t.dataset.act==='togglecol'){const k=S.cols[+t.dataset.i];t.checked?S.hidden.delete(k):S.hidden.add(k);fillTable();return;}
+  if(id==='file'){addFiles(t.files);t.value='';return;}
+  if(id==='rowSel'){S.rowName=t.value;build();renderAll();}
+  else if(id==='ctx'){S.ctx=t.checked;build();renderAll();}
+  else if(id==='src'){S.src=t.checked;build();renderAll();}
+  else if(id==='addr'){S.addr=t.checked;build();renderAll();}
+  else if(id==='signed'){S.signed=t.checked;build();renderAll();}
+  else if(t.name==='naming'){S.naming=t.value;S.labels=makeLabels(S.cols);renderAll();}
+  else if(id==='size'){S.size=+t.value;S.page=0;fillTable();}
+  else if(id==='oDelim'){S.csv.delim=t.value;fillCsv();}
+  else if(id==='oQuote'){S.csv.quote=t.value;fillCsv();}
+  else if(id==='oEol'){S.csv.eol=t.value;fillCsv();}
+  else if(id==='oDec'){S.csv.decimal=t.value;fillCsv();}
+  else if(id==='oHead'){S.csv.header=t.checked;fillCsv();}
+  else if(id==='oBom'){S.csv.bom=t.checked;}
+  else if(t.name==='outfmt'){S.fmt=t.value;renderSide();renderView();}
+  else if(id==='jNum'){S.js.num=t.checked;fillCsv();}
+  else if(id==='jPretty'){S.js.pretty=t.checked;fillCsv();}
+});
+let qT;
+document.addEventListener('input',e=>{
+  if(e.target.id!=='q') return;
+  clearTimeout(qT);const val=e.target.value;
+  qT=setTimeout(()=>{S.search=val;S.page=0;refresh();fillTable();},150);
+});
+$('#examples').addEventListener('click',loadExamples);
+$('#clear').addEventListener('click',()=>{S.files=[];S.sel=null;S.search='';S.sort=null;S.rowName='auto';build();renderAll();});
+$('#copy').addEventListener('click',copyCsv);
+$('#download').addEventListener('click',saveCsv);
+const drop=$('#drop');
+['dragenter','dragover'].forEach(n=>window.addEventListener(n,e=>{e.preventDefault();drop.classList.add('over');}));
+['dragleave','drop'].forEach(n=>window.addEventListener(n,e=>{e.preventDefault();if(n==='drop'||e.target===document.documentElement)drop.classList.remove('over');}));
+window.addEventListener('drop',e=>{if(e.dataTransfer&&e.dataTransfer.files.length) addFiles(e.dataTransfer.files);});
+
+if(typeof window.claude!=='undefined'&&window.claude&&window.claude.use){
+  window.claude.use('downloads').then(d=>{S.dl=d;}).catch(()=>{});
+}
+loadExamples();
+})();
+</script>
+</body>
+</html>

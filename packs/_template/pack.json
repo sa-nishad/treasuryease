@@ -1,0 +1,9 @@
+{
+  "id": "PACK_ID",
+  "name": "PACK_NAME",
+  "summary": "PACK_SUMMARY",
+  "status": "beta",
+  "version": "0.1.0",
+  "tags": ["treasury"],
+  "docs": "README.md"
+}

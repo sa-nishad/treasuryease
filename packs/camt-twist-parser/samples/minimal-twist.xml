@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<BankServiceBillingStatement xmlns="urn:example:twist:bsb">
+  <Header>
+    <MessageId>TWIST-EX-7781</MessageId>
+    <CreationDateTime>2026-11-03T05:40:00Z</CreationDateTime>
+    <Bank><Name>Example Bank plc</Name></Bank>
+    <Period><From>2026-10-01</From><To>2026-10-31</To></Period>
+  </Header>
+  <Account>
+    <AccountNumber>00000003</AccountNumber>
+    <Currency>GBP</Currency>
+    <Service><ServiceCode>BACS-IN</ServiceCode><Description>BACS credits received</Description><Volume>940</Volume><UnitPrice currency="GBP">0.04</UnitPrice><Fee currency="GBP">37.60</Fee></Service>
+    <Service><ServiceCode>CHQ-DEP</ServiceCode><Description>Cheque deposits</Description><Volume>58</Volume><UnitPrice currency="GBP">0.60</UnitPrice><Fee currency="GBP">34.80</Fee></Service>
+    <Service><ServiceCode>SWIFT-MT</ServiceCode><Description>SWIFT message fees</Description><Volume>212</Volume><UnitPrice currency="GBP">0.25</UnitPrice><Fee currency="GBP">53.00</Fee></Service>
+    <Service><ServiceCode>ONL-BNK</ServiceCode><Description>Online banking licence</Description><Volume>1</Volume><Fee currency="GBP">250.00</Fee></Service>
+  </Account>
+</BankServiceBillingStatement>

@@ -1,0 +1,44 @@
+[
+  {
+    "id": "statement-to-csv",
+    "name": "Statement to CSV",
+    "summary": "Flatten camt.053 and MT940 account statements into clean CSV or JSON.",
+    "status": "idea",
+    "tags": ["camt.053", "MT940", "CSV"]
+  },
+  {
+    "id": "recon-diff",
+    "name": "Recon Diff",
+    "summary": "Compare two extracts by key, with tolerances, and list what is missing, extra or different.",
+    "status": "idea",
+    "tags": ["reconciliation", "CSV", "migration"]
+  },
+  {
+    "id": "payment-file-checker",
+    "name": "Payment File Checker",
+    "summary": "Validate pain.001 payment files before they go to the bank: IBANs, BICs, totals, duplicates.",
+    "status": "idea",
+    "tags": ["pain.001", "validation", "payments"]
+  },
+  {
+    "id": "fee-analytics",
+    "name": "Fee Analytics",
+    "summary": "Trend bank fees and unit prices month on month from parsed statements, and flag changes.",
+    "status": "idea",
+    "tags": ["bank fees", "analytics"]
+  },
+  {
+    "id": "fx-rates-loader",
+    "name": "FX Rates Loader",
+    "summary": "Turn published reference rates into load-ready CSV for a treasury system.",
+    "status": "idea",
+    "tags": ["FX", "rates", "CSV"]
+  },
+  {
+    "id": "load-file-builder",
+    "name": "Load File Builder",
+    "summary": "Validate a spreadsheet and write it out as a load file for static data in a treasury system.",
+    "status": "idea",
+    "tags": ["static data", "load files", "validation"]
+  }
+]

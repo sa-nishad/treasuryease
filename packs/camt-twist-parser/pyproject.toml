@@ -1,0 +1,25 @@
+[build-system]
+requires = ["setuptools>=61"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "camt-twist-parser"
+version = "0.1.0"
+description = "Parse camt.086 and TWIST bank service billing XML into CSV or JSON."
+readme = "README.md"
+requires-python = ">=3.9"
+license = { text = "MIT" }
+authors = [{ name = "Saffeena Nishad" }]
+keywords = ["camt.086", "ISO 20022", "TWIST", "treasury", "bank fees", "csv", "parser"]
+classifiers = [
+  "License :: OSI Approved :: MIT License",
+  "Programming Language :: Python :: 3",
+  "Topic :: Office/Business :: Financial",
+]
+dependencies = []
+
+[project.scripts]
+camt-twist-parser = "camt_twist_parser.cli:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
